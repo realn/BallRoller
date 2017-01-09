@@ -27,3 +27,11 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio
+*.VC.db
+.vs
+Debug/
+Release/
+ipch/
+*.pdb
