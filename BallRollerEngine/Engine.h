@@ -13,11 +13,14 @@ private:
   glm::mat4 mProj;
   glm::mat4 mView;
 
-  GLint mAttrVert;
+  GLint mAttrPos;
   GLint mAttrColor;
   GLint mUniTransform;
 
   GLint mShaderProgram;
+  GLuint mVertexBuffer;
+
+  float mRotation;
 
 public:
   CEngine(IDevice* pDevice);
@@ -36,4 +39,5 @@ private:
 
   GLint CreateShader(const GLenum type, const std::string& source);
   GLint CreateShaderProgram(const std::vector<GLint>& shaders);
+  void GLcheck(const std::string& text);
 };

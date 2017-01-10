@@ -5,27 +5,34 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-CEngine::CEngine(IDevice* pDevice) : mDevice(pDevice) {}
+
+CEngine::CEngine(IDevice* pDevice) :
+  mDevice(pDevice), mRotation(0.0f) {}
 
 CEngine::~CEngine() {}
 
 bool CEngine::Initialize() {
 
-  mView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.0f));
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+
+  mView = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
   const std::string vertSource = SHADER_SOURCE(
-    uniform highp mat4 mTransform;
-    attribute highp vec3 vInVert;
-    attribute highp vec4 vInColor;
-    varying highp vec4 vPassColor;
+    precision mediump float;
+    uniform mat4 mTransform;
+    attribute vec3 vInPos;
+    attribute vec4 vInColor;
+    varying vec4 vPassColor;
     void main() {
-      gl_Position = mTransform * vec4(vInVert, 1.0);
+      gl_Position = mTransform * vec4(vInPos, 1.0);
       vPassColor = vInColor;
     }
   );
 
   const std::string fragSource = SHADER_SOURCE(
-    varying highp vec4 vPassColor;
+    precision mediump float;
+    varying vec4 vPassColor;
     void main() {
       gl_FragColor = vPassColor;
     }
@@ -45,23 +52,46 @@ bool CEngine::Initialize() {
   glDeleteShader(vertShader);
   glDeleteShader(fragShader);
 
-  mAttrVert = glGetAttribLocation(mShaderProgram, "vInVert");
+  mAttrPos = glGetAttribLocation(mShaderProgram, "vInPos");
   mAttrColor = glGetAttribLocation(mShaderProgram, "vInColor");
 
   mUniTransform = glGetUniformLocation(mShaderProgram, "mTransform");
+
+  glGenBuffers(1, &mVertexBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
+  {
+    struct Vertex {
+      glm::vec3 mPos;
+      glm::vec4 mColor;
+
+      Vertex(const glm::vec3& pos, const glm::vec4& color) :
+        mPos(pos), mColor(color) {}
+    };
+
+    std::vector<Vertex> verts;
+    verts.push_back(Vertex(glm::vec3(0.0f, 0.7f, -0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)));
+    verts.push_back(Vertex(glm::vec3(-0.5f, 0.3f, -0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)));
+    verts.push_back(Vertex(glm::vec3(0.5f, 0.3f, -0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)));
+
+    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(Vertex), &verts[0], GL_STATIC_DRAW);
+  }
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   return true;
 }
 
 void CEngine::Release() {
   glDeleteProgram(mShaderProgram);
+  glDeleteBuffers(1, &mVertexBuffer);
 }
 
 void CEngine::ScreenChanged(int width, int height) {
-  float halfW = (float)width / 2.0f;
-  float halfH = (float)height / 2.0f;
+  float asp = (float)width / (float)height;
+  float halfW = asp;
+  float halfH = 1.0f;
 
-  mProj = glm::ortho(-halfW, halfW, -halfH, halfH, -1.0f, 10.0f);
+  mProj = glm::ortho(-halfW, halfW, -halfH, halfH);
+  glViewport(0, 0, width, height);
 }
 
 void CEngine::FrameUpdate(const float timeDelta) {
@@ -72,8 +102,28 @@ void CEngine::FrameUpdate(const float timeDelta) {
 void CEngine::Update(const float timeDelta) {}
 
 void CEngine::Render() {
-  glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+  glClearColor(0.2f, 0.2f, 0.2f, 1.0f); 
   glClear(GL_COLOR_BUFFER_BIT);
+
+  glUseProgram(mShaderProgram);
+  glm::mat4 matTrans = mProj;
+  glUniformMatrix4fv(mUniTransform, 1, GL_FALSE, glm::value_ptr(matTrans));
+
+  GLuint vertexSize = sizeof(float) * 3 + sizeof(float) * 4;
+  glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
+  glVertexAttribPointer(mAttrPos, 3, GL_FLOAT, GL_FALSE, vertexSize, 0);
+  glVertexAttribPointer(mAttrColor, 4, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<const void*>(sizeof(float) * 3));
+
+  glEnableVertexAttribArray(mAttrPos);
+  glEnableVertexAttribArray(mAttrColor);
+
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+
+  glDisableVertexAttribArray(mAttrPos);
+  glDisableVertexAttribArray(mAttrColor);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glUseProgram(0);
 }
 
 GLint CEngine::CreateShader(const GLenum type, const std::string & source) {
@@ -92,7 +142,7 @@ GLint CEngine::CreateShader(const GLenum type, const std::string & source) {
     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
     if(len > 0) {
       std::string log;
-      log.resize(len-1);
+      log.resize(len - 1);
       glGetShaderInfoLog(shader, len, NULL, &log[0]);
       mDevice->Log(log);
     }
@@ -131,4 +181,11 @@ GLint CEngine::CreateShaderProgram(const std::vector<GLint>& shaders) {
   }
 
   return program;
+}
+
+void CEngine::GLcheck(const std::string& func) {
+  GLenum err = glGetError();
+  if(err != GL_NO_ERROR) {
+    mDevice->Log("GL call failed in func: " + func);
+  }
 }
