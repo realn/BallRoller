@@ -36,3 +36,15 @@ Release/
 ipch/
 *.pdb
 *.vcxproj.user
+*.VC.VC.opendb
+
+# Android
+*.iml
+.gradle
+/local.properties
+/.idea/workspace.xml
+/.idea/libraries
+.DS_Store
+/build
+/captures
+.externalNativeBuild
