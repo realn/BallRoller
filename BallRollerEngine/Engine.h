@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <vector>
 
 #include <GLES2/gl2.h>
 
@@ -39,5 +40,6 @@ private:
 
   GLint CreateShader(const GLenum type, const std::string& source);
   GLint CreateShaderProgram(const std::vector<GLint>& shaders);
+  GLint CreateShaderProgram(const int numberOfShaders, ...);
   void GLcheck(const std::string& text);
 };

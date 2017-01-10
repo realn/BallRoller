@@ -2,6 +2,8 @@
 #include "Engine.h"
 #include "Device.h"
 
+#include <cstdarg>
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -41,13 +43,7 @@ bool CEngine::Initialize() {
   GLint vertShader = CreateShader(GL_VERTEX_SHADER, vertSource);
   GLint fragShader = CreateShader(GL_FRAGMENT_SHADER, fragSource);
 
-  {
-    std::vector<GLint> shaders;
-    shaders.push_back(vertShader);
-    shaders.push_back(fragShader);
-
-    mShaderProgram = CreateShaderProgram(shaders);
-  }
+  mShaderProgram = CreateShaderProgram(2, vertShader, fragShader);
 
   glDeleteShader(vertShader);
   glDeleteShader(fragShader);
@@ -70,8 +66,8 @@ bool CEngine::Initialize() {
 
     std::vector<Vertex> verts;
     verts.push_back(Vertex(glm::vec3(0.0f, 0.7f, -0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)));
-    verts.push_back(Vertex(glm::vec3(-0.5f, 0.3f, -0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)));
-    verts.push_back(Vertex(glm::vec3(0.5f, 0.3f, -0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)));
+    verts.push_back(Vertex(glm::vec3(-0.5f, -0.3f, -0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)));
+    verts.push_back(Vertex(glm::vec3(0.5f, -0.3f, -0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)));
 
     glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(Vertex), &verts[0], GL_STATIC_DRAW);
   }
@@ -99,14 +95,18 @@ void CEngine::FrameUpdate(const float timeDelta) {
   Render();
 }
 
-void CEngine::Update(const float timeDelta) {}
+void CEngine::Update(const float timeDelta) {
+  mRotation += timeDelta * 30.0f;
+  mRotation = glm::mod(mRotation, 360.0f);
+  mView = glm::rotate(glm::mat4(1.0f), glm::radians(mRotation), glm::vec3(0.0f, 0.0f, 1.0f));
+}
 
 void CEngine::Render() {
   glClearColor(0.2f, 0.2f, 0.2f, 1.0f); 
   glClear(GL_COLOR_BUFFER_BIT);
 
   glUseProgram(mShaderProgram);
-  glm::mat4 matTrans = mProj;
+  glm::mat4 matTrans = mProj * mView;
   glUniformMatrix4fv(mUniTransform, 1, GL_FALSE, glm::value_ptr(matTrans));
 
   GLuint vertexSize = sizeof(float) * 3 + sizeof(float) * 4;
@@ -181,6 +181,17 @@ GLint CEngine::CreateShaderProgram(const std::vector<GLint>& shaders) {
   }
 
   return program;
+}
+
+GLint CEngine::CreateShaderProgram(const int numberOfShaders, ...) {
+  std::vector<GLint> shaders;
+  va_list pt;
+  va_start(pt, numberOfShaders);
+  for(int i = 0; i < numberOfShaders; i++) {
+    shaders.push_back(va_arg(pt, GLint));
+  }
+  va_end(pt);
+  return CreateShaderProgram(shaders);
 }
 
 void CEngine::GLcheck(const std::string& func) {
