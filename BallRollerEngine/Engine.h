@@ -6,6 +6,7 @@
 #include <GLES2/gl2.h>
 
 class IDevice;
+class CMesh;
 
 class CEngine {
 private:
@@ -19,9 +20,10 @@ private:
   GLint mUniTransform;
 
   GLint mShaderProgram;
-  GLuint mVertexBuffer;
 
   float mRotation;
+
+  CMesh* mpMesh;
 
 public:
   CEngine(IDevice* pDevice);

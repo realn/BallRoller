@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "Engine.h"
 #include "Device.h"
+#include "Buffer.h"
+#include "VertexDefinition.h"
+#include "Mesh.h"
+#include "MeshBuffer.h"
 
 #include <cstdarg>
 
@@ -53,8 +57,6 @@ bool CEngine::Initialize() {
 
   mUniTransform = glGetUniformLocation(mShaderProgram, "mTransform");
 
-  glGenBuffers(1, &mVertexBuffer);
-  glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
   {
     struct Vertex {
       glm::vec3 mPos;
@@ -62,28 +64,38 @@ bool CEngine::Initialize() {
 
       Vertex(const glm::vec3& pos, const glm::vec4& color) :
         mPos(pos), mColor(color) {}
+
+      const bool operator==(const Vertex& v) const { return mPos == v.mPos && mColor == v.mColor; }
     };
 
-    std::vector<Vertex> verts;
-    verts.push_back(Vertex(glm::vec3(0.0f, 0.7f, -0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)));
-    verts.push_back(Vertex(glm::vec3(-0.5f, -0.3f, -0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)));
-    verts.push_back(Vertex(glm::vec3(0.5f, -0.3f, -0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)));
+    CVertexDefinition def(sizeof(Vertex));
+    def.AddStream(mAttrPos, 3, GL_FLOAT, 0);
+    def.AddStream(mAttrColor, 4, GL_FLOAT, 12);
 
-    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(Vertex), &verts[0], GL_STATIC_DRAW);
+    CMeshBuffer<Vertex> meshBuf;
+    meshBuf.AddTriangle(
+      Vertex(glm::vec3(0.0f, 0.7f, -0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)),
+      Vertex(glm::vec3(-0.5f, -0.3f, -0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)),
+      Vertex(glm::vec3(0.5f, -0.3f, -0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f))
+    );
+
+    mpMesh = new CMesh(def);
+    mpMesh->setVertices(meshBuf.GetVertices());
+    mpMesh->setIndices(meshBuf.GetIndices());
   }
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 
   return true;
 }
 
 void CEngine::Release() {
   glDeleteProgram(mShaderProgram);
-  glDeleteBuffers(1, &mVertexBuffer);
+  delete mpMesh;
 }
 
 void CEngine::ScreenChanged(int width, int height) {
   float asp = (float)width / (float)height;
-  float halfW = asp;
+  float halfW = (2.0f * asp) / 2.0f;
   float halfH = 1.0f;
 
   mProj = glm::ortho(-halfW, halfW, -halfH, halfH);
@@ -109,20 +121,10 @@ void CEngine::Render() {
   glm::mat4 matTrans = mProj * mView;
   glUniformMatrix4fv(mUniTransform, 1, GL_FALSE, glm::value_ptr(matTrans));
 
-  GLuint vertexSize = sizeof(float) * 3 + sizeof(float) * 4;
-  glBindBuffer(GL_ARRAY_BUFFER, mVertexBuffer);
-  glVertexAttribPointer(mAttrPos, 3, GL_FLOAT, GL_FALSE, vertexSize, 0);
-  glVertexAttribPointer(mAttrColor, 4, GL_FLOAT, GL_FALSE, vertexSize, reinterpret_cast<const void*>(sizeof(float) * 3));
+  mpMesh->Bind();
+  mpMesh->Render();
+  mpMesh->Unbind();
 
-  glEnableVertexAttribArray(mAttrPos);
-  glEnableVertexAttribArray(mAttrColor);
-
-  glDrawArrays(GL_TRIANGLES, 0, 3);
-
-  glDisableVertexAttribArray(mAttrPos);
-  glDisableVertexAttribArray(mAttrColor);
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
   glUseProgram(0);
 }
 
