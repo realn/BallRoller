@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "Engine.h"
 #include "Device.h"
-#include "Buffer.h"
 #include "VertexDefinition.h"
 #include "Mesh.h"
 #include "MeshBuffer.h"
@@ -19,10 +18,11 @@ CEngine::~CEngine() {}
 
 bool CEngine::Initialize() {
 
-  glDisable(GL_CULL_FACE);
-  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_CULL_FACE);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LEQUAL);
 
-  mView = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+  mView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
   const std::string vertSource = SHADER_SOURCE(
     precision mediump float;
@@ -72,12 +72,29 @@ bool CEngine::Initialize() {
     def.AddStream(mAttrPos, 3, GL_FLOAT, 0);
     def.AddStream(mAttrColor, 4, GL_FLOAT, 12);
 
+    glm::vec4 colRed(1.0f, 0.0f, 0.0f, 1.0f);
+    glm::vec4 colGreen(0.0f, 1.0f, 0.0f, 1.0f);
+    glm::vec4 colBlue(0.0f, 0.0f, 1.0f, 1.0f);
+
+    float size = 1.0f;
+    float half = size / 2.0f;
+    Vertex v1(glm::vec3(-half, -half, half), colRed);
+    Vertex v2(glm::vec3(half, -half, half), colGreen);
+    Vertex v3(glm::vec3(half, half, half), colRed);
+    Vertex v4(glm::vec3(-half, half, half), colBlue);
+    Vertex v1b(glm::vec3(-half, -half, -half), colRed);
+    Vertex v2b(glm::vec3(half, -half, -half), colGreen);
+    Vertex v3b(glm::vec3(half, half, -half), colRed);
+    Vertex v4b(glm::vec3(-half, half, -half), colBlue);
+
     CMeshBuffer<Vertex> meshBuf;
-    meshBuf.AddTriangle(
-      Vertex(glm::vec3(0.0f, 0.7f, -0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)),
-      Vertex(glm::vec3(-0.5f, -0.3f, -0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)),
-      Vertex(glm::vec3(0.5f, -0.3f, -0.0f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f))
-    );
+    meshBuf.AddQuadCCW(v1, v2, v3, v4);
+    meshBuf.AddQuadCCW(v4b, v3b, v2b, v1b);
+
+    meshBuf.AddQuadCCW(v2, v1, v1b, v2b);
+    meshBuf.AddQuadCCW(v4, v3, v3b, v4b);
+    meshBuf.AddQuadCCW(v1b, v1, v4, v4b);
+    meshBuf.AddQuadCCW(v2, v2b, v3b, v3);
 
     mpMesh = new CMesh(def);
     mpMesh->setVertices(meshBuf.GetVertices());
@@ -98,7 +115,8 @@ void CEngine::ScreenChanged(int width, int height) {
   float halfW = (2.0f * asp) / 2.0f;
   float halfH = 1.0f;
 
-  mProj = glm::ortho(-halfW, halfW, -halfH, halfH);
+  //mProj = glm::ortho(-halfW, halfW, -halfH, halfH);
+  mProj = glm::perspective(glm::radians(60.0f), asp, 1.0f, 100.0f);
   glViewport(0, 0, width, height);
 }
 
@@ -110,12 +128,15 @@ void CEngine::FrameUpdate(const float timeDelta) {
 void CEngine::Update(const float timeDelta) {
   mRotation += timeDelta * 30.0f;
   mRotation = glm::mod(mRotation, 360.0f);
-  mView = glm::rotate(glm::mat4(1.0f), glm::radians(mRotation), glm::vec3(0.0f, 0.0f, 1.0f));
+  mView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f)) * 
+    glm::rotate(glm::mat4(1.0f), glm::radians(30.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
+    glm::rotate(glm::mat4(1.0f), glm::radians(mRotation), glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void CEngine::Render() {
-  glClearColor(0.2f, 0.2f, 0.2f, 1.0f); 
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+  glClearDepthf(1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glUseProgram(mShaderProgram);
   glm::mat4 matTrans = mProj * mView;

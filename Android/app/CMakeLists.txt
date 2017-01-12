@@ -21,6 +21,10 @@ add_library( # Sets the name of the library.
              # Associated headers in the same location as their source
              # file are automatically included.
              src/main/cpp/wrapper.cpp
+             ../../BallRollerEngine/Buffer.cpp
+             ../../BallRollerEngine/Mesh.cpp
+             ../../BallRollerEngine/MeshBuffer.cpp
+             ../../BallRollerEngine/VertexDefinition.cpp
              ../../BallRollerEngine/Engine.cpp
              ../../BallRollerEngine/stdafx.cpp )
 

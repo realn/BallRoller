@@ -3,6 +3,7 @@
 #include <GLES2/gl2.h>
 #include <glm/glm.hpp>
 #include <vector>
+#include <algorithm>
 
 class CMeshBufferBase {
 private:
@@ -28,10 +29,12 @@ public:
   CMeshBuffer() {}
   virtual ~CMeshBuffer() {}
 
-  const std::vector<_Type>& GetVertices() const;
+  const std::vector<_Type>& GetVertices() const {
+    return mVertices;
+  }
 
   void AddVertex(const _Type& vertex) {
-    GLushort idx = mVertices.size();
+    GLushort idx = (GLushort)mVertices.size();
     if(!FindVertex(vertex, idx)) {
       mVertices.push_back(vertex);
     }
@@ -45,6 +48,10 @@ public:
     AddVertex(v1);
     AddVertex(v2);
     AddVertex(v3);
+  }
+  void AddQuadCCW(const _Type& v1, const _Type& v2, const _Type& v3, const _Type& v4) {
+    AddTriangle(v1, v2, v3);
+    AddTriangle(v1, v3, v4);
   }
 
 private:

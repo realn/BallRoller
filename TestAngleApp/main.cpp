@@ -26,6 +26,13 @@ public:
   virtual void Log(const std::string & text) override {
     std::cout << text << std::endl;
   }
+
+  // Inherited via IDevice
+  virtual bool LoadPng(const std::string & name, std::vector<int>& outData, int & outWidth, int & outHeight) override {
+    
+    return false;
+  }
+
 };
 
 void main() {
