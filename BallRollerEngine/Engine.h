@@ -7,6 +7,7 @@
 
 class IDevice;
 class CMesh;
+class CTexture;
 
 class CEngine {
 private:
@@ -16,14 +17,16 @@ private:
   glm::mat4 mView;
 
   GLint mAttrPos;
-  GLint mAttrColor;
+  GLint mAttrCoord;
   GLint mUniTransform;
+  GLint mUniTexBase;
 
   GLint mShaderProgram;
 
   float mRotation;
 
   CMesh* mpMesh;
+  CTexture* mTexture;
 
 public:
   CEngine(IDevice* pDevice);

@@ -25,6 +25,10 @@ add_library( # Sets the name of the library.
              ../../BallRollerEngine/Mesh.cpp
              ../../BallRollerEngine/MeshBuffer.cpp
              ../../BallRollerEngine/VertexDefinition.cpp
+             ../../BallRollerEngine/GLHelper.cpp
+             ../../BallRollerEngine/lodepng.cpp
+             ../../BallRollerEngine/MeshHelper.cpp
+             ../../BallRollerEngine/Texture.cpp
              ../../BallRollerEngine/Engine.cpp
              ../../BallRollerEngine/stdafx.cpp )
 

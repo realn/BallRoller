@@ -1,5 +1,6 @@
 package coderulers.info.ballroller;
 
+import android.content.res.AssetManager;
 import android.opengl.GLSurfaceView;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -11,14 +12,16 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class BaseGLRenderer implements GLSurfaceView.Renderer {
     private Engine engine;
+    private PngManager pngMng;
 
-    public BaseGLRenderer(Engine engine) {
+    public BaseGLRenderer(Engine engine, AssetManager assetMng) {
         this.engine = engine;
+        this.pngMng = new PngManager(assetMng);
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        engine.Initialize();
+        engine.Initialize(pngMng);
     }
 
     @Override

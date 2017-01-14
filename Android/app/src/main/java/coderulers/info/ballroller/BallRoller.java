@@ -2,6 +2,7 @@ package coderulers.info.ballroller;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.AssetManager;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.widget.TextView;
@@ -19,7 +20,7 @@ public class BallRoller extends Activity {
 
         engine = new Engine();
 
-        glView = new BaseGLSurfaceView(this, engine);
+        glView = new BaseGLSurfaceView(this, engine, getAssets());
 
         setContentView(glView);
     }
@@ -27,12 +28,12 @@ public class BallRoller extends Activity {
     private class BaseGLSurfaceView extends GLSurfaceView {
         BaseGLRenderer renderer;
 
-        public BaseGLSurfaceView(Context context, Engine engine) {
+        public BaseGLSurfaceView(Context context, Engine engine, AssetManager assetMng) {
             super(context);
 
             setEGLContextClientVersion(2);
 
-            renderer = new BaseGLRenderer(engine);
+            renderer = new BaseGLRenderer(engine, assetMng);
 
             setRenderer(renderer);
             setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);

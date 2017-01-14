@@ -19,45 +19,25 @@ public:
     void Log(const std::string& text) override {
         __android_log_print(ANDROID_LOG_VERBOSE, APP_NAME, "%s", text.c_str());
     }
-    bool LoadPng(const std::string& name, std::vector<int>& outData, int& outWidth, int& outHeight){
-        const std::string path = "images/" + name + ".png";
+    bool LoadAsset(const std::string& name, std::vector<unsigned char>& outData) override {
+        const std::string path = name;
 
         jclass cls = mEnv->GetObjectClass(mPngMng);
-        jmethodID mid;
-
-        /* Ask the PNG manager for a bitmap */
-        mid = mEnv->GetMethodID(cls, "open", "(Ljava/lang/String;)Landroid/graphics/Bitmap;");
+        jmethodID mid = mEnv->GetMethodID(cls, "open", "(Ljava/lang/String;)[B");
         jstring javaPath = mEnv->NewStringUTF(path.c_str());
-        jobject png = mEnv->CallObjectMethod(mPngMng, mid, name);
-        mEnv->DeleteLocalRef(javaPath);
-        if(png == nullptr)
+
+        jbyteArray javaByteArray = (jbyteArray)mEnv->CallObjectMethod(mPngMng ,mid, javaPath);
+        if(javaByteArray == nullptr)
             return false;
-        mEnv->NewGlobalRef(png);
 
-        /* Get image dimensions */
-        mid = mEnv->GetMethodID(cls, "getWidth", "(Landroid/graphics/Bitmap;)I");
-        outWidth = mEnv->CallIntMethod(mPngMng, mid, png);
-        mid = mEnv->GetMethodID(cls, "getHeight", "(Landroid/graphics/Bitmap;)I");
-        outHeight = mEnv->CallIntMethod(mPngMng, mid, png);
-
-        int dataSize = outWidth * outHeight;
-        /* Get pixels */
-        jintArray array = mEnv->NewIntArray(dataSize);
-        mEnv->NewGlobalRef(array);
-        mid = mEnv->GetMethodID(cls, "getPixels", "(Landroid/graphics/Bitmap;[I)V");
-        mEnv->CallVoidMethod(mPngMng, mid, png, array);
-
-        jint *pixels = mEnv->GetIntArrayElements(array, 0);
-        outData.insert(outData.end(), pixels, pixels + dataSize);
-
-        mEnv->ReleaseIntArrayElements(array, pixels, 0);
-        mEnv->DeleteGlobalRef(array);
-
-        /* Free image */
-        mid = mEnv->GetMethodID(cls, "close", "(Landroid/graphics/Bitmap;)V");
-        mEnv->CallVoidMethod(mPngMng, mid, png);
-        mEnv->DeleteGlobalRef(png);
-        mEnv->DeleteLocalRef(cls);
+        int len = mEnv->GetArrayLength(javaByteArray);
+        if(len == 0) {
+            mEnv->DeleteLocalRef(javaByteArray);
+            return false;
+        }
+        outData.resize(len);
+        mEnv->GetByteArrayRegion(javaByteArray, 0, len, (jbyte*)&outData[0]);
+        mEnv->DeleteLocalRef(javaByteArray);
         return true;
     }
 };

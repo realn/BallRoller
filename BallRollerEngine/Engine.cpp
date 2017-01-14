@@ -4,15 +4,37 @@
 #include "VertexDefinition.h"
 #include "Mesh.h"
 #include "MeshBuffer.h"
+#include "MeshHelper.h"
+#include "Texture.h"
 
 #include <cstdarg>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+struct Vertex {
+  glm::vec3 mPos;
+  glm::vec2 mCoord;
+
+  Vertex(const glm::vec3& pos, const glm::vec2& coord) :
+    mPos(pos), mCoord(coord) {}
+
+  const bool operator==(const Vertex& v) const { return mPos == v.mPos && mCoord == v.mCoord; }
+};
+
+template<>
+const Vertex CMeshCubeBuilder<Vertex>::MakeVertex(const glm::vec3 & pos, 
+                                            const glm::vec3 & pass, 
+                                            const glm::vec3 & offset, 
+                                            const glm::vec3 & sideNormal, 
+                                            const CMeshCubeBuilderBase::Side side) {
+  glm::vec2 coord = glm::clamp(glm::sign(glm::vec2(pass)), 0.0f, 1.0f);
+  return Vertex(pos, coord);
+}
+
 
 CEngine::CEngine(IDevice* pDevice) :
-  mDevice(pDevice), mRotation(0.0f) {}
+  mDevice(pDevice), mRotation(0.0f), mpMesh(nullptr), mTexture(nullptr) {}
 
 CEngine::~CEngine() {}
 
@@ -28,19 +50,23 @@ bool CEngine::Initialize() {
     precision mediump float;
     uniform mat4 mTransform;
     attribute vec3 vInPos;
-    attribute vec4 vInColor;
-    varying vec4 vPassColor;
+    attribute vec2 vInCoord;
+    varying vec2 vPassCoord;
     void main() {
       gl_Position = mTransform * vec4(vInPos, 1.0);
-      vPassColor = vInColor;
+      vPassCoord = vInCoord;
     }
   );
 
   const std::string fragSource = SHADER_SOURCE(
     precision mediump float;
-    varying vec4 vPassColor;
+    uniform sampler2D texBase;
+    varying vec2 vPassCoord;
     void main() {
-      gl_FragColor = vPassColor;
+      vec4 color = texture2D(texBase, vPassCoord);
+      color.a = 1.0;
+      //gl_FragColor = vec4(1.0, 0.0, 1.0, 0.0);
+      gl_FragColor = color;
     }
   );
 
@@ -53,54 +79,35 @@ bool CEngine::Initialize() {
   glDeleteShader(fragShader);
 
   mAttrPos = glGetAttribLocation(mShaderProgram, "vInPos");
-  mAttrColor = glGetAttribLocation(mShaderProgram, "vInColor");
+  mAttrCoord = glGetAttribLocation(mShaderProgram, "vInCoord");
 
   mUniTransform = glGetUniformLocation(mShaderProgram, "mTransform");
+  mUniTexBase = glGetUniformLocation(mShaderProgram, "texBase");
 
   {
-    struct Vertex {
-      glm::vec3 mPos;
-      glm::vec4 mColor;
+    std::vector<unsigned char> pngData;
+    mDevice->LoadAsset("crate.png", pngData);
 
-      Vertex(const glm::vec3& pos, const glm::vec4& color) :
-        mPos(pos), mColor(color) {}
+    mTexture = new CTexture();
+    mTexture->LoadPng(pngData);
+    GLcheck("Texture");
+  }
 
-      const bool operator==(const Vertex& v) const { return mPos == v.mPos && mColor == v.mColor; }
-    };
+  {
 
     CVertexDefinition def(sizeof(Vertex));
     def.AddStream(mAttrPos, 3, GL_FLOAT, 0);
-    def.AddStream(mAttrColor, 4, GL_FLOAT, 12);
+    def.AddStream(mAttrCoord, 2, GL_FLOAT, 12);
 
-    glm::vec4 colRed(1.0f, 0.0f, 0.0f, 1.0f);
-    glm::vec4 colGreen(0.0f, 1.0f, 0.0f, 1.0f);
-    glm::vec4 colBlue(0.0f, 0.0f, 1.0f, 1.0f);
+    CMeshCubeBuilder<Vertex> meshBuilder;
+    meshBuilder.BuildCube(1.0f);
 
-    float size = 1.0f;
-    float half = size / 2.0f;
-    Vertex v1(glm::vec3(-half, -half, half), colRed);
-    Vertex v2(glm::vec3(half, -half, half), colGreen);
-    Vertex v3(glm::vec3(half, half, half), colRed);
-    Vertex v4(glm::vec3(-half, half, half), colBlue);
-    Vertex v1b(glm::vec3(-half, -half, -half), colRed);
-    Vertex v2b(glm::vec3(half, -half, -half), colGreen);
-    Vertex v3b(glm::vec3(half, half, -half), colRed);
-    Vertex v4b(glm::vec3(-half, half, -half), colBlue);
-
-    CMeshBuffer<Vertex> meshBuf;
-    meshBuf.AddQuadCCW(v1, v2, v3, v4);
-    meshBuf.AddQuadCCW(v4b, v3b, v2b, v1b);
-
-    meshBuf.AddQuadCCW(v2, v1, v1b, v2b);
-    meshBuf.AddQuadCCW(v4, v3, v3b, v4b);
-    meshBuf.AddQuadCCW(v1b, v1, v4, v4b);
-    meshBuf.AddQuadCCW(v2, v2b, v3b, v3);
+    CMeshBuffer<Vertex>* meshBuf = meshBuilder.GetMesh();
 
     mpMesh = new CMesh(def);
-    mpMesh->setVertices(meshBuf.GetVertices());
-    mpMesh->setIndices(meshBuf.GetIndices());
+    mpMesh->setVertices(meshBuf->GetVertices());
+    mpMesh->setIndices(meshBuf->GetIndices());    
   }
-
 
   return true;
 }
@@ -108,6 +115,7 @@ bool CEngine::Initialize() {
 void CEngine::Release() {
   glDeleteProgram(mShaderProgram);
   delete mpMesh;
+  delete mTexture;
 }
 
 void CEngine::ScreenChanged(int width, int height) {
@@ -142,10 +150,14 @@ void CEngine::Render() {
   glm::mat4 matTrans = mProj * mView;
   glUniformMatrix4fv(mUniTransform, 1, GL_FALSE, glm::value_ptr(matTrans));
 
+  mTexture->Bind();
+  glUniform1i(mUniTexBase, 0);
+
   mpMesh->Bind();
   mpMesh->Render();
   mpMesh->Unbind();
 
+  mTexture->Unbind();
   glUseProgram(0);
 }
 

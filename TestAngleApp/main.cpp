@@ -9,6 +9,10 @@
 #include <EGL/egl.h>
 #include <SDL.h>
 #include <SDL_syswm.h>
+#include <fstream>
+#include <vector>
+#include <iostream>
+#include <iterator>
 
 #include <GLES2/gl2.h>
 
@@ -27,12 +31,26 @@ public:
     std::cout << text << std::endl;
   }
 
-  // Inherited via IDevice
-  virtual bool LoadPng(const std::string & name, std::vector<int>& outData, int & outWidth, int & outHeight) override {
-    
-    return false;
+  virtual bool LoadAsset(const std::string & name, std::vector<unsigned char>& outData) override {
+    const std::string path = GetAssetPath(name);
+    std::ifstream file(path.c_str(), std::ios::binary | std::ios::in);
+    if(!file.good())
+      return false;
+
+    file.seekg(0, std::ios::end);
+    std::streampos len = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    outData.resize(len);
+    file.read((char*)&outData[0], len);
+
+    return true;
   }
 
+private:
+  const std::string GetAssetPath(const std::string& name) const {
+    return "assets/" + name;
+  }
 };
 
 void main() {
