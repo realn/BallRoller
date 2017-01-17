@@ -65,6 +65,10 @@ extern "C" {
         g_pEngine->FrameUpdate(timeDelta);
     }
 
+    void Java_coderulers_info_ballroller_Engine_UserAction(JNIEnv *, jobject, jint action) {
+        g_pEngine->UserAction((UserActionType)action);
+    }
+
     void Java_coderulers_info_ballroller_Engine_Release(JNIEnv *, jobject) {
         g_pEngine->Release();
     }

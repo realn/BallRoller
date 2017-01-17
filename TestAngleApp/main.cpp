@@ -13,6 +13,7 @@
 #include <vector>
 #include <iostream>
 #include <iterator>
+#include <map>
 
 #include <GLES2/gl2.h>
 
@@ -117,6 +118,11 @@ void main() {
   Uint64 timerFreq = SDL_GetPerformanceFrequency();
   Uint64 timerPrev = SDL_GetPerformanceCounter();
 
+  typedef std::map<SDL_Keycode, UserActionType> keymap_t;
+  keymap_t keymap;
+  keymap[SDLK_LEFT] = UserActionType::MoveLeft;
+  keymap[SDLK_RIGHT] = UserActionType::MoveRight;
+
   SDL_Event event;
   bool run = true;
   while(run) {
@@ -126,6 +132,12 @@ void main() {
     }
     if(event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
       engine.ScreenChanged(event.window.data1, event.window.data2);
+    }
+    if(event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+      keymap_t::iterator it = keymap.find(event.key.keysym.sym);
+      if(it != keymap.end()) {
+        engine.UserAction(it->second);
+      }
     }
 
     Uint64 timerNow = SDL_GetPerformanceCounter();

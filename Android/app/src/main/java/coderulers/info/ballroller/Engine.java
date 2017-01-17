@@ -12,6 +12,7 @@ public final class Engine {
     public native boolean Initialize(Object pngMng);
     public native void ScreenChanged(int width, int height);
     public native void FrameUpdate(float timeDelta);
+    public native void UserAction(int action);
     public native void Release();
 
     // Used to load the 'native-lib' library on application startup.

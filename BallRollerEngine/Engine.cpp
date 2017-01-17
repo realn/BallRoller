@@ -133,9 +133,25 @@ void CEngine::FrameUpdate(const float timeDelta) {
   Render();
 }
 
+void CEngine::UserAction(UserActionType type) {
+  const float maxVel = 500.0f;
+  if(type == UserActionType::MoveLeft) {
+    mRotVel = -maxVel;
+  }
+  if(type == UserActionType::MoveRight) {
+    mRotVel = maxVel;
+  }
+}
+
 void CEngine::Update(const float timeDelta) {
-  mRotation += timeDelta * 30.0f;
+
+  mRotation += timeDelta * mRotVel;
   mRotation = glm::mod(mRotation, 360.0f);
+
+  mRotVel -= (mRotVel * 0.3f) * timeDelta;
+  if(glm::abs(mRotVel) < 0.01f)
+    mRotVel = 0.0f;
+
   mView = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f)) * 
     glm::rotate(glm::mat4(1.0f), glm::radians(30.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
     glm::rotate(glm::mat4(1.0f), glm::radians(mRotation), glm::vec3(0.0f, 1.0f, 0.0f));

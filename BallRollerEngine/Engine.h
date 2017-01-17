@@ -9,6 +9,16 @@ class IDevice;
 class CMesh;
 class CTexture;
 
+enum class UserActionType {
+  Click = 0,
+  DbClick = 1,
+  Cancel = 2,
+  MoveLeft = 3,
+  MoveRight = 4,
+  MoveUp = 5,
+  MoveDown = 6,
+};
+
 class CEngine {
 private:
   IDevice* mDevice;
@@ -24,6 +34,7 @@ private:
   GLint mShaderProgram;
 
   float mRotation;
+  float mRotVel;
 
   CMesh* mpMesh;
   CTexture* mTexture;
@@ -38,6 +49,8 @@ public:
   void ScreenChanged(int width, int height);
 
   void FrameUpdate(const float timeDelta);
+
+  void UserAction(UserActionType type);
 
 private:
   void  Update(const float timeDelta);
