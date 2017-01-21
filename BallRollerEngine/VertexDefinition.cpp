@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "VertexDefinition.h"
 
-CVertexDefinition::CVertexDefinition(const GLsizei stride) 
+CVertexDefinition::CVertexDefinition(const glm::uint32 stride) 
   : mStride(stride) {}
 
 CVertexDefinition::CVertexDefinition(const CVertexDefinition & other) 
@@ -9,7 +9,12 @@ CVertexDefinition::CVertexDefinition(const CVertexDefinition & other)
 
 CVertexDefinition::~CVertexDefinition() {}
 
-void CVertexDefinition::AddStream(const GLint attribute, const GLuint size, const GLenum type, const GLsizei offset, const bool normalized) {
+void CVertexDefinition::AddStream(const glm::int32 attribute, 
+                                  const glm::uint32 size, 
+                                  const glm::uint32 type, 
+                                  const glm::uint32 offset, 
+                                  const bool normalized) 
+{
   CStream s;
   s.mAttribute = attribute;
   s.mSize = size;

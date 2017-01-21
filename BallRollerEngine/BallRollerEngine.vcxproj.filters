@@ -41,7 +41,16 @@
     <ClInclude Include="Texture.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="GLHelper.h">
+    <ClInclude Include="calibri.hpp">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Font.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="GLutils.h">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>
@@ -73,7 +82,10 @@
     <ClCompile Include="Texture.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="GLHelper.cpp">
+    <ClCompile Include="Font.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Shader.cpp">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>

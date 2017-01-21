@@ -3,7 +3,6 @@
 #include <iostream>
 
 #define SDL_MAIN_HANDLED
-
 #define GL_GLEXT_PROTOTYPES
 
 #include <EGL/egl.h>
@@ -17,7 +16,6 @@
 
 #include <GLES2/gl2.h>
 
-#include "../BallRollerEngine/Engine.h"
 #include "../BallRollerEngine/Device.h"
 
 void addAttrib(std::vector<EGLint>& atts, EGLint attrib, EGLint value) {
@@ -32,7 +30,7 @@ public:
     std::cout << text << std::endl;
   }
 
-  virtual bool LoadAsset(const std::string & name, std::vector<unsigned char>& outData) override {
+  virtual bool LoadAsset(const std::string & name, std::vector<glm::uint8>& outData) override {
     const std::string path = GetAssetPath(name);
     std::ifstream file(path.c_str(), std::ios::binary | std::ios::in);
     if(!file.good())
@@ -42,7 +40,7 @@ public:
     std::streampos len = file.tellg();
     file.seekg(0, std::ios::beg);
 
-    outData.resize(len);
+    outData.resize((size_t)len);
     file.read((char*)&outData[0], len);
 
     return true;
@@ -105,14 +103,14 @@ void main() {
   eglMakeCurrent(display, windowSurface, windowSurface, context);
 
   CWinDevice device;
-  CEngine engine(&device);
+  IEngine* pEngine = IEngine::Create(&device);
 
-  engine.Initialize();
+  pEngine->Initialize();
   {
     int w, h;
     SDL_GetWindowSize(pWindow, &w, &h);
 
-    engine.ScreenChanged(w, h);
+    pEngine->ScreenChanged(w, h);
   }
 
   Uint64 timerFreq = SDL_GetPerformanceFrequency();
@@ -131,12 +129,12 @@ void main() {
       run = false;
     }
     if(event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-      engine.ScreenChanged(event.window.data1, event.window.data2);
+      pEngine->ScreenChanged(event.window.data1, event.window.data2);
     }
     if(event.type == SDL_KEYDOWN && event.key.repeat == 0) {
       keymap_t::iterator it = keymap.find(event.key.keysym.sym);
       if(it != keymap.end()) {
-        engine.UserAction(it->second);
+        pEngine->UserAction(it->second);
       }
     }
 
@@ -144,12 +142,13 @@ void main() {
     float deltaTime = (float)(timerNow - timerPrev) / timerFreq;
     timerPrev = timerNow;
 
-    engine.FrameUpdate(deltaTime);
+    pEngine->FrameUpdate(deltaTime);
 
     eglSwapBuffers(display, windowSurface);
   }
 
-  engine.Release();
+  pEngine->Release();
+  delete pEngine;
 
   eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 

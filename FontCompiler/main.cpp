@@ -4,8 +4,10 @@
 #include <map>
 #include <vector>
 #include <sstream>
+#include <fstream>
 
 #define SDL_MAIN_HANDLED
+#define SOURCE_CODE(...)  #__VA_ARGS__
 
 #include <SDL.h>
 #include <SDL_ttf.h>
@@ -19,8 +21,8 @@ std::wstring allChars = lowerChars + upperChars + specialChars;
 typedef std::vector<std::string> strvec_t;
 
 struct FontCharDesc {
-  Uint16 code;
-  Uint16 flags;
+  unsigned short code;
+  unsigned short flags;
   float minx;
   float miny;
   float maxx;
@@ -32,6 +34,23 @@ struct FontCharDesc {
   float tymin;
   float tymax;
 };
+
+const std::string fontDescSrc = SOURCE_CODE(
+  struct FontCharDesc {
+  unsigned short code;
+  unsigned short flags;
+  float minx;
+  float miny;
+  float maxx;
+  float maxy;
+  float advx;
+  float advy;
+  float txmin;
+  float txmax;
+  float tymin;
+  float tymax;
+};
+);
 
 typedef std::vector<FontCharDesc> chardescvec_t;
 
@@ -96,10 +115,7 @@ int main(int argc, char* argv[]) {
     std::cout << "SDL_ttf init failed.";
     return -1;
   }
-  if(IMG_Init(IMG_INIT_PNG) != 0) {
-    std::cout << "SDL_image init failed.";
-    return -1;
-  }
+  IMG_Init(IMG_INIT_PNG);
 
   //SDL_RWops* pFontFile = SDL_RWFromFile(fontPath.c_str(), "rb");
   TTF_Font* pFont = TTF_OpenFont(fontPath.c_str(), fontSize);
@@ -108,14 +124,16 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  SDL_Color bg = { 0, 0, 0, 0 };
+  SDL_Color bg = {0, 0, 0, 0};
   SDL_Color fg = {255, 255, 255, 255};
 
-  SDL_Surface* pTexture = SDL_CreateRGBSurface(0, 256, 256, 32, 
-                                               0xFF000000,
+  SDL_Surface* pTexture = SDL_CreateRGBSurface(0, texSize, texSize, 32,
                                                0x00FF0000,
                                                0x0000FF00,
-                                               0x000000FF);
+                                               0x000000FF,
+                                               0xFF000000);
+  SDL_FillRect(pTexture, nullptr, 0x00000000);
+  SDL_SetSurfaceBlendMode(pTexture, SDL_BLENDMODE_BLEND);
 
   chardescvec_t charlist;
 
@@ -131,16 +149,18 @@ int main(int argc, char* argv[]) {
       continue;
     }
 
-    SDL_Surface* pCharGlyph = TTF_RenderGlyph_Shaded(pFont, (Uint16)(*it), fg, bg);
+    SDL_Surface* pCharGlyph = TTF_RenderGlyph_Blended(pFont, (Uint16)(*it), fg);
     if(pCharGlyph == nullptr)
       continue;
 
-    if(tx + pCharGlyph->w > 256) {
+    if(tx + pCharGlyph->w > (int)texSize) {
       ty += fontSize;
       tx = 0;
     }
-    if(ty + fontSize > 256)
-      continue;
+    if(ty + fontSize > texSize) {
+      std::cout << "No more space on texture." << std::endl;
+      break;
+    }
 
     SDL_Rect target;
     target.x = tx;
@@ -150,6 +170,8 @@ int main(int argc, char* argv[]) {
 
     if(SDL_BlitSurface(pCharGlyph, NULL, pTexture, &target) != 0) {
       std::wcout << L"Failed to blit char " << *it << std::endl;
+      std::wcout << L"SDL Error: " << SDL_GetError() << std::endl;
+      SDL_FreeSurface(pCharGlyph);
       continue;
     }
 
@@ -166,8 +188,8 @@ int main(int argc, char* argv[]) {
     desc.advy = 0.0f;
     desc.txmin = (float)target.x / tsize;
     desc.tymin = (float)target.y / tsize;
-    desc.txmax = (float)(target.x + target.w) / fsize;
-    desc.tymax = (float)(target.y + target.h) / fsize;
+    desc.txmax = (float)(target.x + target.w) / tsize;
+    desc.tymax = (float)(target.y + target.h) / tsize;
 
     charlist.push_back(desc);
   }
@@ -178,7 +200,39 @@ int main(int argc, char* argv[]) {
   }
 
   if(outType == "hpp") {
+    std::stringstream ss;
+    ss << "#pragma once" << std::endl << std::endl;
+    ss << fontDescSrc << std::endl << std::endl;
+    ss << "static FontCharDesc g_fontList[] = {" << std::endl;
+    for(chardescvec_t::iterator it = charlist.begin(); it != charlist.end(); it++) {
+      FontCharDesc& c = *it;
+      if(it != charlist.begin())
+        ss << "," << std::endl;
 
+      ss << "  {"
+        << c.code << ", "
+        << c.flags << ", "
+        << c.minx << "f, "
+        << c.miny << "f, "
+        << c.maxx << "f, "
+        << c.maxy << "f, "
+        << c.advx << "f, "
+        << c.advy << "f, "
+        << c.txmin << "f, "
+        << c.txmax << "f, "
+        << c.tymin << "f, "
+        << c.tymax << "f}";
+    }
+    ss << std::endl << "};" << std::endl;
+    ss << "static size_t g_fontListSize = " << charlist.size() << ";" << std::endl;
+
+    std::string hppFileName = outFileName + ".hpp";
+    std::fstream file(hppFileName.c_str(), std::ios::out);
+
+    file << ss.str();
+  }
+  else {
+    std::cout << "Unknown output type for font desc." << std::endl;
   }
 
   SDL_FreeSurface(pTexture);
@@ -188,6 +242,7 @@ int main(int argc, char* argv[]) {
   TTF_Quit();
   SDL_Quit();
 
+  std::wcout << L"Done." << std::endl;
   std::cin.get();
   return 0;
 }

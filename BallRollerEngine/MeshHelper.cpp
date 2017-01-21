@@ -5,7 +5,7 @@ CMeshCubeBuilderBase::CMeshCubeBuilderBase() {}
 
 CMeshCubeBuilderBase::~CMeshCubeBuilderBase() {}
 
-void CMeshCubeBuilderBase::BuildCube(const float size, const glm::vec3 offset) {
+void CMeshCubeBuilderBase::BuildCube(const glm::float32 size, const glm::vec3 offset) {
   BeginBuild();
   for(int i = 0; i < 6; i++) {
     BuildSide(size, (Side)i, offset);
@@ -13,15 +13,21 @@ void CMeshCubeBuilderBase::BuildCube(const float size, const glm::vec3 offset) {
   EndBuild();
 }
 
-void CMeshCubeBuilderBase::BuildSide(const float size, const Side side, const glm::vec3 & offset) {
-  float half = size / 2.0f;
+void CMeshCubeBuilderBase::BuildSide(const glm::float32 size, 
+                                     const Side side, 
+                                     const glm::vec3 & offset) {
+  glm::float32 half = size / 2.0f;
   BuildVertex(-half, -half, half, side, offset);
   BuildVertex(half, -half, half, side, offset);
   BuildVertex(half, half, half, side, offset);
   BuildVertex(-half, half, half, side, offset);
 }
 
-void CMeshCubeBuilderBase::BuildVertex(const float x, const float y, const float z, const Side side, const glm::vec3 & offset) {
+void CMeshCubeBuilderBase::BuildVertex(const glm::float32 x, 
+                                       const glm::float32 y, 
+                                       const glm::float32 z, 
+                                       const Side side, 
+                                       const glm::vec3 & offset) {
   glm::vec3 pass(x, y, z);
   switch(side) {
   case Side::Front: 

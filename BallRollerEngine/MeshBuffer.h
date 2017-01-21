@@ -1,23 +1,22 @@
 #pragma once
 
-#include <GLES2/gl2.h>
-#include <glm/glm.hpp>
+#include "GLutils.h"
 #include <vector>
 #include <algorithm>
 
 class CMeshBufferBase {
 private:
-  std::vector<GLushort> mIndices;
+  std::vector<glm::uint16> mIndices;
 
 public:
   CMeshBufferBase();
   virtual ~CMeshBufferBase();
 
-  const std::vector<GLushort>&  GetIndices() const;
+  const std::vector<glm::uint16>&  GetIndices() const;
 
-  void AddPoint(const GLushort idx);
-  void AddLine(const GLushort idx1, const GLushort idx2);
-  void AddTriangle(const GLushort idx1, const GLushort idx2, const GLushort idx3);
+  void AddPoint(const glm::uint16 idx);
+  void AddLine(const glm::uint16 idx1, const glm::uint16 idx2);
+  void AddTriangle(const glm::uint16 idx1, const glm::uint16 idx2, const glm::uint16 idx3);
 };
 
 template<typename _Type>
@@ -34,7 +33,7 @@ public:
   }
 
   void AddVertex(const _Type& vertex) {
-    GLushort idx = (GLushort)mVertices.size();
+    glm::uint16 idx = (glm::uint16)mVertices.size();
     if(!FindVertex(vertex, idx)) {
       mVertices.push_back(vertex);
     }
@@ -55,12 +54,12 @@ public:
   }
 
 private:
-  const bool FindVertex(const _Type& vertex, GLushort& outIndex) const {
+  const bool FindVertex(const _Type& vertex, glm::uint16& outIndex) const {
     typename std::vector<_Type>::const_iterator it = std::find(mVertices.begin(), mVertices.end(), vertex);
     if(it == mVertices.end())
       return false;
 
-    outIndex = (GLushort)(it - mVertices.begin());
+    outIndex = (glm::uint16)(it - mVertices.begin());
     return true;
   }
 };

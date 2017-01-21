@@ -2,7 +2,7 @@
 #include "Texture.h"
 #include "lodepng.h"
 
-CTexture::CTexture(const GLenum format, const glm::uvec2 size) 
+CTexture::CTexture(const glm::uint32 format, const glm::uvec2 size) 
   : mId(0), mTarget(GL_TEXTURE_2D), mFormat(format), mSize(size) {
   glGenTextures(1, &mId);
   glBindTexture(mTarget, mId);
@@ -16,25 +16,25 @@ CTexture::~CTexture() {
   glDeleteTextures(1, &mId);
 }
 
-void CTexture::Bind(const GLuint unit) const {
+void CTexture::Bind(const glm::uint32 unit) const {
   glActiveTexture(GL_TEXTURE0 + unit);
   glBindTexture(mTarget, mId);
   glEnable(mTarget);
 }
 
-void CTexture::Unbind(const GLuint unit) const {
+void CTexture::Unbind(const glm::uint32 unit) const {
   glActiveTexture(GL_TEXTURE0 + unit);
   glBindTexture(mTarget, 0);
   glDisable(mTarget);
 }
 
-void CTexture::Load(const GLenum inputFormat, GLenum dataFormat, const void * pData) {
+void CTexture::Load(const glm::uint32 inputFormat, glm::uint32 dataFormat, const void * pData) {
   glBindTexture(mTarget, mId);
   glTexSubImage2D(mTarget, 0, 0, 0, mSize.x, mSize.y, inputFormat, dataFormat, pData);
   glBindTexture(mTarget, 0);
 }
 
-void CTexture::Load(const glm::uvec2 size, const GLenum format, const GLenum inputFormat, const GLenum dataFormat, const void * pData) {
+void CTexture::Load(const glm::uvec2 size, const glm::uint32 format, const glm::uint32 inputFormat, const glm::uint32 dataFormat, const void * pData) {
   glBindTexture(mTarget, mId);
   mSize = size;
   mFormat = format;
@@ -46,12 +46,12 @@ void CTexture::Load(const glm::uvec2 size, const GLenum format, const GLenum inp
   glBindTexture(mTarget, 0);
 }
 
-const bool CTexture::LoadPng(const std::vector<unsigned char>& pngData) {
+const bool CTexture::LoadPng(const std::vector<glm::uint8>& pngData) {
   if(pngData.empty())
     return false;
 
   unsigned int w, h;
-  std::vector<unsigned char> data;
+  std::vector<glm::uint8> data;
   int err = lodepng::decode(data, w, h, pngData);
   if(err != 0) {
     return false;

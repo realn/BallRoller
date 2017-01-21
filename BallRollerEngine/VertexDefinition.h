@@ -1,28 +1,32 @@
 #pragma once
 
-#include <GLES2/gl2.h>
+#include "GLutils.h"
 #include <vector>
 
 class CVertexDefinition {
 private:
   struct CStream {
-    GLint mAttribute;
-    GLuint mSize;
-    GLenum mType;
-    GLsizei mOffset;
+    glm::int32 mAttribute;
+    glm::uint32 mSize;
+    glm::uint32 mType;
+    glm::uint32 mOffset;
     bool mNormalized;
   };
   typedef std::vector<CStream> streamvec;
 
   streamvec mStreams;
-  GLsizei mStride;
+  glm::uint32 mStride;
 
 public:
-  CVertexDefinition(const GLsizei stride);
+  CVertexDefinition(const glm::uint32 stride);
   CVertexDefinition(const CVertexDefinition& other);
   ~CVertexDefinition();
 
-  void AddStream(const GLint attribute, const GLuint size, const GLenum type, const GLsizei offset, const bool normalized = false);
+  void AddStream(const glm::int32 attribute, 
+                 const glm::uint32 size, 
+                 const glm::uint32 type, 
+                 const glm::uint32 offset, 
+                 const bool normalized = false);
   void Clear();
 
   void Bind() const;

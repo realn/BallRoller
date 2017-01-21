@@ -1,13 +1,12 @@
 #include "stdafx.h"
 #include "Engine.h"
-#include "Device.h"
 #include "VertexDefinition.h"
 #include "Mesh.h"
 #include "MeshBuffer.h"
 #include "MeshHelper.h"
 #include "Texture.h"
-
-#include <cstdarg>
+#include "Shader.h"
+#include "Font.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -33,13 +32,17 @@ const Vertex CMeshCubeBuilder<Vertex>::MakeVertex(const glm::vec3 & pos,
 }
 
 
+IEngine* IEngine::Create(IDevice* pDevice) {
+  return new CEngine(pDevice);
+}
+
 CEngine::CEngine(IDevice* pDevice) :
-  mDevice(pDevice), mRotation(0.0f), mpMesh(nullptr), mTexture(nullptr) {}
+  mDevice(pDevice), mRotation(0.0f), mpMesh(nullptr), mTexture(nullptr), mProgram(nullptr) {}
 
-CEngine::~CEngine() {}
+CEngine::~CEngine() {
+}
 
-bool CEngine::Initialize() {
-
+const bool CEngine::Initialize() {
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
@@ -70,19 +73,23 @@ bool CEngine::Initialize() {
     }
   );
 
-  GLint vertShader = CreateShader(GL_VERTEX_SHADER, vertSource);
-  GLint fragShader = CreateShader(GL_FRAGMENT_SHADER, fragSource);
+  CShader vertShader(GL_VERTEX_SHADER);
+  CShader fragShader(GL_FRAGMENT_SHADER);
 
-  mShaderProgram = CreateShaderProgram(2, vertShader, fragShader);
+  vertShader.Compile(vertSource);
+  fragShader.Compile(fragSource);
 
-  glDeleteShader(vertShader);
-  glDeleteShader(fragShader);
+  mProgram = new CShaderProgram();
+  mProgram->Attach(vertShader);
+  mProgram->Attach(fragShader);
 
-  mAttrPos = glGetAttribLocation(mShaderProgram, "vInPos");
-  mAttrCoord = glGetAttribLocation(mShaderProgram, "vInCoord");
+  mProgram->Link();
 
-  mUniTransform = glGetUniformLocation(mShaderProgram, "mTransform");
-  mUniTexBase = glGetUniformLocation(mShaderProgram, "texBase");
+  GLint attrPos = mProgram->GetAttributeIndex("vInPos");
+  GLint attrCoord = mProgram->GetAttributeIndex("vInCoord");
+
+  mUniTransform = mProgram->GetUniformIndex("mTransform");
+  mUniTexBase = mProgram->GetUniformIndex("texBase");
 
   {
     std::vector<unsigned char> pngData;
@@ -90,14 +97,12 @@ bool CEngine::Initialize() {
 
     mTexture = new CTexture();
     mTexture->LoadPng(pngData);
-    GLcheck("Texture");
   }
 
   {
-
     CVertexDefinition def(sizeof(Vertex));
-    def.AddStream(mAttrPos, 3, GL_FLOAT, 0);
-    def.AddStream(mAttrCoord, 2, GL_FLOAT, 12);
+    def.AddStream(attrPos, 3, GL_FLOAT, 0);
+    def.AddStream(attrCoord, 2, GL_FLOAT, 12);
 
     CMeshCubeBuilder<Vertex> meshBuilder;
     meshBuilder.BuildCube(1.0f);
@@ -109,32 +114,39 @@ bool CEngine::Initialize() {
     mpMesh->setIndices(meshBuf->GetIndices());    
   }
 
+  mFont = new CFont(mDevice);
+
+  mText = new CFontText(mFont);
+  mText->SetText(L"Marek to ja");
+
   return true;
 }
 
 void CEngine::Release() {
-  glDeleteProgram(mShaderProgram);
+  delete mText;
+  delete mFont;
+  delete mProgram;
   delete mpMesh;
   delete mTexture;
 }
 
-void CEngine::ScreenChanged(int width, int height) {
-  float asp = (float)width / (float)height;
-  float halfW = (2.0f * asp) / 2.0f;
-  float halfH = 1.0f;
+void CEngine::ScreenChanged(const glm::int32 width, const glm::int32 height) {
+  glm::float32 asp = (glm::float32)width / (glm::float32)height;
+  glm::float32 halfW = (2.0f * asp) / 2.0f;
+  glm::float32 halfH = 1.0f;
 
   //mProj = glm::ortho(-halfW, halfW, -halfH, halfH);
   mProj = glm::perspective(glm::radians(60.0f), asp, 1.0f, 100.0f);
   glViewport(0, 0, width, height);
 }
 
-void CEngine::FrameUpdate(const float timeDelta) {
+void CEngine::FrameUpdate(const glm::float32 timeDelta) {
   Update(timeDelta);
   Render();
 }
 
 void CEngine::UserAction(UserActionType type) {
-  const float maxVel = 500.0f;
+  const glm::float32 maxVel = 500.0f;
   if(type == UserActionType::MoveLeft) {
     mRotVel = -maxVel;
   }
@@ -143,7 +155,7 @@ void CEngine::UserAction(UserActionType type) {
   }
 }
 
-void CEngine::Update(const float timeDelta) {
+void CEngine::Update(const glm::float32 timeDelta) {
 
   mRotation += timeDelta * mRotVel;
   mRotation = glm::mod(mRotation, 360.0f);
@@ -162,92 +174,25 @@ void CEngine::Render() {
   glClearDepthf(1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  glUseProgram(mShaderProgram);
-  glm::mat4 matTrans = mProj * mView;
-  glUniformMatrix4fv(mUniTransform, 1, GL_FALSE, glm::value_ptr(matTrans));
+  {
+    CBind<CShaderProgram> prog(mProgram);
+    CBind<CTexture> tex(mTexture);
+    CBind<CMesh> mesh(mpMesh);
 
-  mTexture->Bind();
-  glUniform1i(mUniTexBase, 0);
+    glm::mat4 matTrans = mProj * mView;
+    glUniformMatrix4fv(mUniTransform, 1, GL_FALSE, glm::value_ptr(matTrans));
+    glUniform1i(mUniTexBase, 0);
 
-  mpMesh->Bind();
-  mpMesh->Render();
-  mpMesh->Unbind();
-
-  mTexture->Unbind();
-  glUseProgram(0);
-}
-
-GLint CEngine::CreateShader(const GLenum type, const std::string & source) {
-  GLint shader = glCreateShader(type);
-
-  const GLchar* szSource = reinterpret_cast<const GLchar*>(source.c_str());
-
-  glShaderSource(shader, 1, &szSource, NULL);
-  glCompileShader(shader);
-
-  GLint status;
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-  if(status != GL_TRUE) {
-    mDevice->Log("Shader Compilation Failed.");
-    GLint len;
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-    if(len > 0) {
-      std::string log;
-      log.resize(len - 1);
-      glGetShaderInfoLog(shader, len, NULL, &log[0]);
-      mDevice->Log(log);
-    }
-
-    glDeleteShader(shader);
-    return 0;
+    mpMesh->Render();
   }
 
-  return shader;
-}
+  {
+    CBind<CFont> font(mFont);
+    CGLState depth(GL_DEPTH_TEST, false);
+    CGLState blend(GL_BLEND);
+    CGLState cull(GL_CULL_FACE);
 
-GLint CEngine::CreateShaderProgram(const std::vector<GLint>& shaders) {
-  GLint program = glCreateProgram();
-
-  for(std::vector<GLint>::const_iterator it = shaders.begin(); it != shaders.end(); it++) {
-    glAttachShader(program, *it);
-  }
-
-  glLinkProgram(program);
-
-  GLint status;
-  glGetProgramiv(program, GL_LINK_STATUS, &status);
-  if(status != GL_TRUE) {
-    mDevice->Log("Shader Program Linking Failed.");
-    GLint len;
-    glGetProgramiv(program, GL_INFO_LOG_LENGTH, &len);
-    if(len > 0) {
-      std::string log;
-      log.resize(len - 1);
-      glGetProgramInfoLog(program, len, NULL, &log[0]);
-      mDevice->Log(log);
-    }
-
-    glDeleteProgram(program);
-    return 0;
-  }
-
-  return program;
-}
-
-GLint CEngine::CreateShaderProgram(const int numberOfShaders, ...) {
-  std::vector<GLint> shaders;
-  va_list pt;
-  va_start(pt, numberOfShaders);
-  for(int i = 0; i < numberOfShaders; i++) {
-    shaders.push_back(va_arg(pt, GLint));
-  }
-  va_end(pt);
-  return CreateShaderProgram(shaders);
-}
-
-void CEngine::GLcheck(const std::string& func) {
-  GLenum err = glGetError();
-  if(err != GL_NO_ERROR) {
-    mDevice->Log("GL call failed in func: " + func);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    mText->Render(glm::ortho(0.0f, 7.0f, 0.0f, 10.0f));
   }
 }

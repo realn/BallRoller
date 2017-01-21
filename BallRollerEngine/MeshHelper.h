@@ -1,6 +1,5 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include "MeshBuffer.h"
 
 class CMeshCubeBuilderBase {
@@ -18,15 +17,22 @@ public:
   CMeshCubeBuilderBase();
   virtual ~CMeshCubeBuilderBase();
 
-  void BuildCube(const float size, const glm::vec3 offset = glm::vec3(0.0f));
+  void BuildCube(const glm::float32 size, const glm::vec3 offset = glm::vec3(0.0f));
   
 private:
-  void BuildSide(const float size, const Side side, const glm::vec3& offset);
-  void BuildVertex(const float x, const float y, const float z, const Side size, const glm::vec3& offset);
+  void BuildSide(const glm::float32 size, const Side side, const glm::vec3& offset);
+  void BuildVertex(const glm::float32 x, 
+                   const glm::float32 y, 
+                   const glm::float32 z, 
+                   const Side size, 
+                   const glm::vec3& offset);
 
 protected:
-  virtual void AddVertex(const glm::vec3& pos, const glm::vec3& pass,
-                         const glm::vec3& offset, const glm::vec3& sideNormal, const Side side) = 0;
+  virtual void AddVertex(const glm::vec3& pos, 
+                         const glm::vec3& pass,
+                         const glm::vec3& offset, 
+                         const glm::vec3& sideNormal, 
+                         const Side side) = 0;
   virtual void BeginBuild() = 0;
   virtual void EndBuild() = 0;
 };
@@ -47,7 +53,11 @@ public:
   }
 
 protected:
-  const _Vertex MakeVertex(const glm::vec3 & pos, const glm::vec3 & pass, const glm::vec3 & offset, const glm::vec3 & sideNormal, const Side side) {
+  const _Vertex MakeVertex(const glm::vec3 & pos, 
+                           const glm::vec3 & pass, 
+                           const glm::vec3 & offset, 
+                           const glm::vec3 & sideNormal, 
+                           const Side side) {
     return _Vertex(pos);
   }
   void AddQuad() {
@@ -58,7 +68,12 @@ protected:
   }
 
   // Inherited via CMeshCubeBuilderBase
-  virtual void AddVertex(const glm::vec3 & pos, const glm::vec3 & pass, const glm::vec3 & offset, const glm::vec3 & sideNormal, const Side side) override {
+  virtual void AddVertex(const glm::vec3 & pos, 
+                         const glm::vec3 & pass, 
+                         const glm::vec3 & offset, 
+                         const glm::vec3 & sideNormal, 
+                         const Side side) override 
+  {
     {
       _Vertex v = MakeVertex(pos, pass, offset, sideNormal, side);
       mVertBuffer.push_back(v);
@@ -68,12 +83,13 @@ protected:
       mVertBuffer.clear();
     }
   }
+
   virtual void BeginBuild() override {
     delete mpMesh;
     mpMesh = new CMeshBuffer<_Vertex>();
   }
-  virtual void EndBuild() override {
-  }
+
+  virtual void EndBuild() override {}
 };
 
 class CMeshSphereBuilderBase {
